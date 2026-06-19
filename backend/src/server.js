@@ -67,13 +67,17 @@ app.use((req, res) => {
 // Error handler middleware
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`
-╔════════════════════════════════════════╗
-║   ProjectHub AI Backend Server Started ║
-║   Port: ${PORT}                              ║
-║   Environment: ${process.env.NODE_ENV || 'development'}              ║
-╚════════════════════════════════════════╝
-  `);
-});
+// Start server if run directly (not serverless)
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`
+  ╔════════════════════════════════════════╗
+  ║   ProjectHub AI Backend Server Started ║
+  ║   Port: ${PORT}                              ║
+  ║   Environment: ${process.env.NODE_ENV || 'development'}              ║
+  ╚════════════════════════════════════════╝
+    `);
+  });
+}
+
+export default app;
