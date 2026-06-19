@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database (auto-generated)
+backend/data/projecthub.db
+
+# Uploads
+backend/uploads/
+backend/uploads/sourcecode/
+backend/uploads/reports/
+backend/uploads/ppt/
+backend/uploads/viva/
+backend/uploads/abstract/
+
+# Cache
+.cache/
+.next/
+
+# Misc
+.env.example.local
+*.pem
