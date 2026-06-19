@@ -38,20 +38,41 @@ app.use('/uploads', express.static('uploads'));
 console.log('Initializing database...');
 initializeDatabase();
 
-// API Routes
+// API Routes (Mounted under both /api and root to support Vercel serverless prefix stripping)
 app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
+
 app.use('/api/projects', projectRoutes);
+app.use('/projects', projectRoutes);
+
 app.use('/api/categories', categoryRoutes);
+app.use('/categories', categoryRoutes);
+
 app.use('/api/custom-requests', customRequestRoutes);
+app.use('/custom-requests', customRequestRoutes);
+
 app.use('/api/orders', orderRoutes);
+app.use('/orders', orderRoutes);
+
 app.use('/api/admin', adminRoutes);
+app.use('/admin', adminRoutes);
+
 app.use('/api/uploads', uploadRoutes);
+app.use('/uploads', uploadRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   return res.status(200).json({
     success: true,
     message: 'Backend server is running',
+    timestamp: new Date()
+  });
+});
+
+app.get('/health', (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Backend server is running (serverless)',
     timestamp: new Date()
   });
 });
