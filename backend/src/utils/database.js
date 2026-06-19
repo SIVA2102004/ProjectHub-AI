@@ -1,9 +1,9 @@
 /**
  * Database Connection & Initialization
- * Uses sql.js (WebAssembly SQLite) for compiled-free serverless compatibility
+ * Uses alasql (Pure JS SQL engine) for compiled-free serverless compatibility
  */
 
-import initSqlJs from 'sql.js';
+import alasql from 'alasql';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,8 +13,8 @@ const __dirname = path.dirname(__filename);
 
 // Database file path (writable /tmp on Vercel, local file otherwise)
 const dbPath = process.env.VERCEL
-  ? '/tmp/projecthub.db'
-  : path.join(__dirname, '../../data/projecthub.db');
+  ? '/tmp/projecthub.json'
+  : path.join(__dirname, '../../data/projecthub.json');
 
 // Ensure database directory exists
 const dbDir = path.dirname(dbPath);
@@ -22,67 +22,57 @@ if (!fs.existsSync(dbDir)) {
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
-// Initialize sql.js engine
-const SQL = await initSqlJs({
-  locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.1/${file}`
-});
-
 class StatementCompat {
-  constructor(sqlJsStmt, dbInstance, dbPath) {
-    this.stmt = sqlJsStmt;
+  constructor(sql, dbInstance) {
+    this.sql = sql;
     this.dbInstance = dbInstance;
-    this.dbPath = dbPath;
   }
 
   get(...params) {
     try {
-      this.stmt.bind(params);
-      if (this.stmt.step()) {
-        const result = this.stmt.getAsObject();
-        this.stmt.reset();
-        return result;
-      }
-      this.stmt.reset();
-      return undefined;
+      const results = alasql(this.sql, params);
+      return results[0] || undefined;
     } catch (e) {
-      this.stmt.reset();
+      console.error('alasql get error on query:', this.sql, e);
       throw e;
     }
   }
 
   all(...params) {
     try {
-      this.stmt.bind(params);
-      const results = [];
-      while (this.stmt.step()) {
-        results.push(this.stmt.getAsObject());
-      }
-      this.stmt.reset();
-      return results;
+      return alasql(this.sql, params);
     } catch (e) {
-      this.stmt.reset();
+      console.error('alasql all error on query:', this.sql, e);
       throw e;
     }
   }
 
   run(...params) {
     try {
-      this.stmt.bind(params);
-      this.stmt.step();
-      this.stmt.reset();
+      const result = alasql(this.sql, params);
       
       // Save changes to file
       this.dbInstance.save();
 
-      const lastInsertRowid = this.dbInstance.getLastInsertRowid();
-      const changes = this.dbInstance.getRowsModified();
+      let lastInsertRowid = 0;
+      if (this.sql.toLowerCase().includes('insert')) {
+        // Find name of table being inserted into
+        const matches = this.sql.match(/insert\s+into\s+(\w+)/i);
+        const tableName = matches ? matches[1] : null;
+        if (tableName) {
+          const lastIdRes = alasql(`SELECT MAX(id) AS id FROM ${tableName}`);
+          if (lastIdRes && lastIdRes[0]) {
+            lastInsertRowid = lastIdRes[0].id || 0;
+          }
+        }
+      }
 
       return {
-        changes,
+        changes: typeof result === 'number' ? result : 1,
         lastInsertRowid
       };
     } catch (e) {
-      this.stmt.reset();
+      console.error('alasql run error on query:', this.sql, e);
       throw e;
     }
   }
@@ -91,77 +81,85 @@ class StatementCompat {
 class DatabaseCompat {
   constructor(dbPath) {
     this.dbPath = dbPath;
-    if (fs.existsSync(dbPath)) {
-      try {
-        const fileBuffer = fs.readFileSync(dbPath);
-        this.sqlDb = new SQL.Database(fileBuffer);
-      } catch (err) {
-        console.error('Failed to load database file, starting fresh:', err);
-        this.sqlDb = new SQL.Database();
-      }
-    } else {
-      this.sqlDb = new SQL.Database();
-    }
+    this.load();
   }
 
   pragma(str) {
-    this.sqlDb.run(`PRAGMA ${str}`);
+    // Ignore SQLite pragma statements in alasql
   }
 
   prepare(sql) {
-    const stmt = this.sqlDb.prepare(sql);
-    return new StatementCompat(stmt, this, this.dbPath);
+    return new StatementCompat(sql, this);
   }
 
   exec(sql) {
-    this.sqlDb.run(sql);
-    this.save();
+    try {
+      alasql(sql);
+      this.save();
+    } catch (e) {
+      // Suppress minor index or SQLite-specific syntax warnings
+      if (!sql.toLowerCase().includes('index')) {
+        console.error('alasql exec error:', e);
+      }
+    }
   }
 
   save() {
     try {
-      const data = this.sqlDb.export();
-      const buffer = Buffer.from(data);
-      fs.writeFileSync(this.dbPath, buffer);
+      const tables = alasql.databases.alasql.tables;
+      const dbData = {};
+      for (const name in tables) {
+        if (tables[name] && tables[name].data) {
+          dbData[name] = tables[name].data;
+        }
+      }
+      fs.writeFileSync(this.dbPath, JSON.stringify(dbData, null, 2));
     } catch (e) {
-      console.error('Failed to save sqlite database:', e);
+      console.error('Failed to save alasql database:', e);
     }
   }
 
-  getLastInsertRowid() {
-    const res = this.sqlDb.exec('SELECT last_insert_rowid() AS id');
-    if (res && res[0] && res[0].values && res[0].values[0]) {
-      return res[0].values[0][0];
+  load() {
+    if (fs.existsSync(this.dbPath)) {
+      try {
+        const fileContent = fs.readFileSync(this.dbPath, 'utf8');
+        const dbData = JSON.parse(fileContent);
+        
+        for (const name in dbData) {
+          alasql(`CREATE TABLE IF NOT EXISTS ${name}`);
+          if (alasql.databases.alasql.tables[name]) {
+            alasql.databases.alasql.tables[name].data = dbData[name];
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load alasql database, starting fresh:', err);
+      }
     }
-    return 0;
-  }
-
-  getRowsModified() {
-    const res = this.sqlDb.exec('SELECT changes() AS changes');
-    if (res && res[0] && res[0].values && res[0].values[0]) {
-      return res[0].values[0][0];
-    }
-    return 0;
   }
 }
 
 // Initialize database
 const db = new DatabaseCompat(dbPath);
 
-// Enable foreign keys
-db.pragma('foreign_keys = ON');
-
 // Initialize schema
 export function initializeDatabase() {
   try {
     const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf-8');
-    const statements = schema.split(';').filter(stmt => stmt.trim());
+    
+    const cleanSchema = schema
+      .split('\n')
+      .filter(line => !line.trim().startsWith('--'))
+      .join('\n');
+
+    const statements = cleanSchema.split(';').filter(stmt => stmt.trim());
     
     for (const statement of statements) {
       if (statement.trim()) {
         db.exec(statement);
       }
     }
+    
+    db.load();
     
     console.log('✓ Database initialized successfully');
     return true;
