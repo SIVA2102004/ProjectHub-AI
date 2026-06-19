@@ -23,7 +23,9 @@ if (!fs.existsSync(dbDir)) {
 }
 
 // Initialize sql.js engine
-const SQL = await initSqlJs();
+const SQL = await initSqlJs({
+  locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.14.1/${file}`
+});
 
 class StatementCompat {
   constructor(sqlJsStmt, dbInstance, dbPath) {
