@@ -26,6 +26,7 @@ Thumbs.db
 
 # Database (auto-generated)
 backend/data/projecthub.db
+backend/data/projecthub.json
 
 # Uploads
 backend/uploads/
