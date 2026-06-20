@@ -1,234 +1,247 @@
-/**
- * Projects Browsing Page
- * Students can browse, search, and filter projects
- */
-
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import api from '../utils/api.js';
+import { useSearchParams } from 'react-router-dom';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import ProjectCard from '../components/ProjectCard';
+import api from '../api/axios';
 
-export function ProjectsPage() {
+export default function ProjectsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [loading, setLoading] = useState(true);
+  const [pagination, setPagination] = useState({});
+  const [search, setSearch] = useState(searchParams.get('search') || '');
   const [filters, setFilters] = useState({
-    search: searchParams.get('search') || '',
     category: searchParams.get('category') || '',
-    sort: 'newest',
+    difficulty: searchParams.get('difficulty') || '',
+    is_free: searchParams.get('is_free') || '',
+    sort: searchParams.get('sort') || 'created_at',
+    order: searchParams.get('order') || 'desc',
   });
-  const [pagination, setPagination] = useState({
-    total: 0,
-    pages: 1,
-    currentPage: 1,
-  });
+  const [page, setPage] = useState(1);
 
-  const ITEMS_PER_PAGE = 12;
+  const difficulties = ['Beginner', 'Intermediate', 'Advanced'];
+  const sortOptions = [
+    { value: 'created_at-desc', label: 'Newest First' },
+    { value: 'created_at-asc', label: 'Oldest First' },
+    { value: 'price-asc', label: 'Price: Low to High' },
+    { value: 'price-desc', label: 'Price: High to Low' },
+    { value: 'download_count-desc', label: 'Most Downloaded' },
+  ];
 
-  // Fetch categories
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await api.get('/categories');
-        setCategories(response.data.data);
-      } catch (error) {
-        console.error('Failed to fetch categories:', error);
-      }
-    };
-
-    fetchCategories();
+    api.get('/categories').then(r => setCategories(r.data.categories)).catch(() => {});
   }, []);
 
-  // Fetch projects
   useEffect(() => {
     fetchProjects();
-  }, [filters, pagination.currentPage]);
+  }, [filters, page]);
 
   const fetchProjects = async () => {
-    setIsLoading(true);
-
+    setLoading(true);
     try {
-      const params = {
-        limit: ITEMS_PER_PAGE,
-        offset: (pagination.currentPage - 1) * ITEMS_PER_PAGE,
+      const params = new URLSearchParams({
+        page, limit: 12,
+        ...(search && { search }),
+        ...(filters.category && { category: filters.category }),
+        ...(filters.difficulty && { difficulty: filters.difficulty }),
+        ...(filters.is_free && { is_free: filters.is_free }),
         sort: filters.sort,
-      };
-
-      if (filters.search) params.search = filters.search;
-      if (filters.category) params.category = filters.category;
-
-      const response = await api.get('/projects', { params });
-      setProjects(response.data.data);
-      setPagination({
-        total: response.data.pagination.total,
-        pages: response.data.pagination.pages,
-        currentPage: pagination.currentPage,
+        order: filters.order,
       });
-    } catch (error) {
-      console.error('Failed to fetch projects:', error);
+      const res = await api.get(`/projects?${params}`);
+      setProjects(res.data.projects);
+      setPagination(res.data.pagination);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-
-    setIsLoading(false);
-  };
-
-  const handleFilterChange = (name, value) => {
-    setFilters((prev) => ({ ...prev, [name]: value }));
-    setPagination({ ...pagination, currentPage: 1 });
-    setSearchParams({ ...Object.fromEntries(searchParams), [name]: value });
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
-    setPagination({ ...pagination, currentPage: 1 });
+    setPage(1);
+    fetchProjects();
   };
 
-  return (
-    <div className="min-h-screen bg-slate-900 py-12 px-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4">Browse Projects</h1>
-          <p className="text-xl text-slate-300">Explore our collection of engineering projects and resources</p>
-        </div>
+  const handleFilter = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
 
-        {/* Search and Filters */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-12">
-          {/* Filters Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="card sticky top-20">
-              <h3 className="text-xl font-bold text-white mb-6">Filters</h3>
+  const clearFilters = () => {
+    setSearch('');
+    setFilters({ category: '', difficulty: '', is_free: '', sort: 'created_at', order: 'desc' });
+    setPage(1);
+  };
+
+  const hasActiveFilters = filters.category || filters.difficulty || filters.is_free || search;
+
+  return (
+    <div className="min-h-screen">
+      <Navbar />
+
+      {/* Header */}
+      <div className="pt-24 pb-10 px-4 bg-dark-800/30 border-b border-white/5">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
+            Browse <span className="gradient-text">Projects</span>
+          </h1>
+          <p className="text-gray-400 text-lg">
+            {pagination.total || 0} projects across {categories.length} categories
+          </p>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-10">
+        {/* Search Bar */}
+        <form onSubmit={handleSearch} className="flex gap-3 mb-8">
+          <div className="relative flex-1">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+            <input
+              type="text"
+              placeholder="Search projects, tech stack, topics..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="input-field pl-11"
+            />
+          </div>
+          <button type="submit" className="btn-primary px-6">Search</button>
+        </form>
+
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Sidebar Filters */}
+          <aside className="lg:w-64 flex-shrink-0">
+            <div className="glass-card p-5 sticky top-24">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-white font-semibold">Filters</h3>
+                {hasActiveFilters && (
+                  <button onClick={clearFilters} className="text-xs text-primary-400 hover:text-primary-300">Clear All</button>
+                )}
+              </div>
 
               {/* Category Filter */}
-              <div className="mb-8">
-                <label className="block text-white font-semibold mb-3">Category</label>
-                <select
-                  value={filters.category}
-                  onChange={(e) => handleFilterChange('category', e.target.value)}
-                  className="input-field"
-                >
-                  <option value="">All Categories</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
+              <div className="mb-6">
+                <h4 className="text-gray-400 text-xs font-semibold uppercase mb-3">Category</h4>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => handleFilter('category', '')}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!filters.category ? 'bg-primary-600/20 text-primary-400' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                  >
+                    All Categories
+                  </button>
+                  {categories.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => handleFilter('category', cat.slug)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors ${
+                        filters.category === cat.slug ? 'bg-primary-600/20 text-primary-400' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <span>{cat.icon}</span>
+                      <span className="flex-1">{cat.name}</span>
+                      <span className="text-xs text-gray-500">{cat.project_count}</span>
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
 
-              {/* Sort Filter */}
-              <div className="mb-8">
-                <label className="block text-white font-semibold mb-3">Sort By</label>
-                <select
-                  value={filters.sort}
-                  onChange={(e) => handleFilterChange('sort', e.target.value)}
-                  className="input-field"
-                >
-                  <option value="newest">Newest</option>
-                  <option value="popular">Most Popular</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                </select>
+              {/* Difficulty Filter */}
+              <div className="mb-6">
+                <h4 className="text-gray-400 text-xs font-semibold uppercase mb-3">Difficulty</h4>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => handleFilter('difficulty', '')}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${!filters.difficulty ? 'bg-primary-600/20 text-primary-400' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                  >
+                    All Levels
+                  </button>
+                  {difficulties.map(d => (
+                    <button key={d} onClick={() => handleFilter('difficulty', d)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${filters.difficulty === d ? 'bg-primary-600/20 text-primary-400' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price Filter */}
+              <div className="mb-6">
+                <h4 className="text-gray-400 text-xs font-semibold uppercase mb-3">Price</h4>
+                <div className="space-y-1">
+                  {[['', 'All Projects'], ['false', 'Paid Projects'], ['true', 'Free Projects']].map(([val, label]) => (
+                    <button key={val} onClick={() => handleFilter('is_free', val)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${filters.is_free === val ? 'bg-primary-600/20 text-primary-400' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          </aside>
 
           {/* Projects Grid */}
-          <div className="lg:col-span-3">
-            {/* Search Bar */}
-            <form onSubmit={handleSearch} className="mb-8">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={filters.search}
-                  onChange={(e) => handleFilterChange('search', e.target.value)}
-                  placeholder="Search projects..."
-                  className="input-field flex-1"
-                />
-                <button type="submit" className="btn-primary">
-                  Search
-                </button>
-              </div>
-            </form>
+          <div className="flex-1">
+            {/* Sort bar */}
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-gray-400 text-sm">
+                Showing {projects.length} of {pagination.total || 0} projects
+              </span>
+              <select
+                value={`${filters.sort}-${filters.order}`}
+                onChange={e => {
+                  const [sort, order] = e.target.value.split('-');
+                  setFilters(prev => ({ ...prev, sort, order }));
+                }}
+                className="input-field w-auto py-2 text-sm"
+              >
+                {sortOptions.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
 
-            {/* Projects Grid */}
-            {isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <p className="text-white text-lg">Loading projects...</p>
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                {Array(6).fill(0).map((_, i) => (
+                  <div key={i} className="glass-card h-80 animate-pulse">
+                    <div className="h-44 bg-dark-700 rounded-t-2xl" />
+                    <div className="p-5 space-y-3">
+                      <div className="h-4 bg-dark-600 rounded w-3/4" />
+                      <div className="h-3 bg-dark-600 rounded w-full" />
+                      <div className="h-3 bg-dark-600 rounded w-2/3" />
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : projects.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <p className="text-slate-400 text-lg">No projects found</p>
+              <div className="text-center py-24 glass-card">
+                <div className="text-6xl mb-4">🔍</div>
+                <h3 className="text-xl font-bold text-white mb-2">No projects found</h3>
+                <p className="text-gray-400">Try adjusting your filters or search query</p>
+                <button onClick={clearFilters} className="btn-primary mt-6">Clear Filters</button>
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {projects.map((project) => (
-                    <Link
-                      key={project.id}
-                      to={`/projects/${project.id}`}
-                      className="card-hover group"
-                    >
-                      {project.imageUrl && (
-                        <img
-                          src={project.imageUrl}
-                          alt={project.title}
-                          className="w-full h-48 object-cover rounded-lg mb-4 group-hover:opacity-75 transition"
-                        />
-                      )}
-                      <div className="flex gap-2 mb-3">
-                        <span className="badge">{project.categoryName}</span>
-                        <span className="badge bg-yellow-500/20 text-yellow-300">{project.difficulty}</span>
-                      </div>
-                      <h3 className="text-lg font-bold text-white mb-2 group-hover:text-blue-400 transition">
-                        {project.title}
-                      </h3>
-                      <p className="text-slate-400 text-sm mb-4 line-clamp-2">
-                        {project.description}
-                      </p>
-                      <div className="flex justify-between items-center border-t border-slate-700 pt-4">
-                        <div>
-                          {project.isFree ? (
-                            <span className="text-green-400 font-bold">Free</span>
-                          ) : (
-                            <span className="text-blue-400 font-bold">₹{project.price}</span>
-                          )}
-                        </div>
-                        <span className="text-slate-400 text-sm">⬇️ {project.downloadCount}</span>
-                      </div>
-                    </Link>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {projects.map(p => <ProjectCard key={p.id} project={p} />)}
                 </div>
 
                 {/* Pagination */}
-                {pagination.pages > 1 && (
-                  <div className="flex justify-center gap-4 mt-12">
-                    <button
-                      onClick={() =>
-                        setPagination({
-                          ...pagination,
-                          currentPage: Math.max(1, pagination.currentPage - 1),
-                        })
-                      }
-                      disabled={pagination.currentPage === 1}
-                      className="btn-outline disabled:opacity-50"
-                    >
-                      Previous
-                    </button>
-                    <span className="flex items-center text-white">
-                      Page {pagination.currentPage} of {pagination.pages}
-                    </span>
-                    <button
-                      onClick={() =>
-                        setPagination({
-                          ...pagination,
-                          currentPage: Math.min(pagination.pages, pagination.currentPage + 1),
-                        })
-                      }
-                      disabled={pagination.currentPage === pagination.pages}
-                      className="btn-outline disabled:opacity-50"
-                    >
-                      Next
-                    </button>
+                {pagination.totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-10">
+                    <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
+                      className="btn-secondary text-sm py-2 px-4 disabled:opacity-40">← Prev</button>
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => i + 1).map(p => (
+                      <button key={p} onClick={() => setPage(p)}
+                        className={`w-10 h-10 rounded-lg text-sm font-medium transition-all ${page === p ? 'bg-primary-600 text-white' : 'text-gray-400 hover:bg-white/5'}`}>
+                        {p}
+                      </button>
+                    ))}
+                    <button disabled={page === pagination.totalPages} onClick={() => setPage(p => p + 1)}
+                      className="btn-secondary text-sm py-2 px-4 disabled:opacity-40">Next →</button>
                   </div>
                 )}
               </>
@@ -236,8 +249,8 @@ export function ProjectsPage() {
           </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }
-
-export default ProjectsPage;

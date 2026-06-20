@@ -1,72 +1,67 @@
-/**
- * Main App Component
- * Routing and layout setup
- */
-
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext.jsx';
-import Header from './components/Header.jsx';
-import Footer from './components/Footer.jsx';
-import ProtectedRoute from './components/ProtectedRoute.jsx';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { ProtectedRoute, AdminRoute } from './components/ProtectedRoute';
 
-// Pages
-import HomePage from './pages/HomePage.jsx';
-import LoginPage from './pages/LoginPage.jsx';
-import RegisterPage from './pages/RegisterPage.jsx';
-import ProjectsPage from './pages/ProjectsPage.jsx';
-import ProjectDetailsPage from './pages/ProjectDetailsPage.jsx';
-import CustomProjectPage from './pages/CustomProjectPage.jsx';
-import AdminDashboard from './pages/AdminDashboard.jsx';
+// Public Pages
+import HomePage from './pages/HomePage';
+import ProjectsPage from './pages/ProjectsPage';
+import ProjectDetailPage from './pages/ProjectDetailPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import CustomRequestPage from './pages/CustomRequestPage';
+import ContactPage from './pages/ContactPage';
 
-// Styles
-import './styles/globals.css';
+// Student Pages
+import StudentDashboard from './pages/StudentDashboard';
 
-function App() {
+// Admin Pages
+import AdminAnalytics from './pages/admin/AdminAnalytics';
+import AdminProjects from './pages/admin/AdminProjects';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminOrders from './pages/admin/AdminOrders';
+import AdminCustomRequests from './pages/admin/AdminCustomRequests';
+
+export default function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <div className="min-h-screen bg-slate-900 flex flex-col">
-          <Header />
-          <main className="flex-grow">
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/projects" element={<ProjectsPage />} />
-              <Route path="/projects/:id" element={<ProjectDetailsPage />} />
-              <Route path="/custom-project" element={<CustomProjectPage />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects/:slug" element={<ProjectDetailPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/custom-request" element={<CustomRequestPage />} />
+          <Route path="/contact" element={<ContactPage />} />
 
-              {/* Protected Routes */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute requiredRole="admin">
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
+          {/* Student Routes */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute><StudentDashboard /></ProtectedRoute>
+          } />
 
-              {/* 404 */}
-              <Route
-                path="*"
-                element={
-                  <div className="min-h-screen flex items-center justify-center bg-slate-900">
-                    <div className="text-center">
-                      <h1 className="text-6xl font-bold text-white mb-4">404</h1>
-                      <p className="text-xl text-slate-300">Page not found</p>
-                    </div>
-                  </div>
-                }
-              />
-            </Routes>
-          </main>
-          <Footer />
-        </div>
-      </AuthProvider>
-    </Router>
+          {/* Admin Routes */}
+          <Route path="/admin" element={
+            <AdminRoute><AdminAnalytics /></AdminRoute>
+          } />
+          <Route path="/admin/projects" element={
+            <AdminRoute><AdminProjects /></AdminRoute>
+          } />
+          <Route path="/admin/users" element={
+            <AdminRoute><AdminUsers /></AdminRoute>
+          } />
+          <Route path="/admin/orders" element={
+            <AdminRoute><AdminOrders /></AdminRoute>
+          } />
+          <Route path="/admin/requests" element={
+            <AdminRoute><AdminCustomRequests /></AdminRoute>
+          } />
+
+          {/* Catch all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
-
-export default App;

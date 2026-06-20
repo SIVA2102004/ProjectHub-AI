@@ -1,31 +1,38 @@
-/**
- * Protected Route Component
- * Handles authentication and authorization
- */
-
 import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
-export function ProtectedRoute({ children, requiredRole }) {
-  const { isAuthenticated, user, isLoading } = useAuth();
+// Spinner component
+const Spinner = () => (
+  <div className="min-h-screen flex items-center justify-center bg-dark-900">
+    <div className="loader w-12 h-12" />
+  </div>
+);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
+// Protected: any authenticated user
+export function ProtectedRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
+  if (loading) return <Spinner />;
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
+  return children;
+}
 
-  if (requiredRole && user?.role !== requiredRole) {
+// Protected: admin only
+export function AdminRoute({ children }) {
+  const { isAuthenticated, isAdmin, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <Spinner />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  if (!isAdmin) {
     return <Navigate to="/" replace />;
   }
-
   return children;
 }
 

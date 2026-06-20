@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Custom Base Styles ──────────────────────────────────────────────────── */
+@layer base {
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    @apply bg-dark-900 text-gray-100 font-sans antialiased;
+    background-image: radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.03) 0%, transparent 50%),
+                      radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-dark-800; }
+  ::-webkit-scrollbar-thumb { @apply bg-dark-500 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-primary-600; }
+  ::selection { @apply bg-primary-600/30 text-white; }
+}
+
+/* ── Custom Component Styles ─────────────────────────────────────────────── */
+@layer components {
+  /* Glass card effect */
+  .glass-card {
+    @apply bg-dark-800/60 backdrop-blur-sm border border-white/5 rounded-2xl;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent;
+  }
+
+  /* Gradient border button */
+  .btn-primary {
+    @apply relative px-6 py-3 rounded-xl font-semibold text-white overflow-hidden transition-all duration-300;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.5);
+  }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    @apply px-6 py-3 rounded-xl font-semibold border border-white/10 text-gray-300 transition-all duration-300;
+    @apply hover:border-primary-500 hover:text-white hover:bg-primary-500/10;
+  }
+
+  /* Input styles */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl bg-dark-700 border border-white/10 text-white placeholder-gray-500
+           focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500/50 transition-all duration-200;
+  }
+
+  /* Card hover effect */
+  .project-card {
+    @apply glass-card transition-all duration-300 cursor-pointer;
+  }
+  .project-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 20px rgba(59, 130, 246, 0.1);
+  }
+
+  /* Sidebar nav item */
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 transition-all duration-200;
+    @apply hover:text-white hover:bg-white/5 cursor-pointer;
+  }
+  .sidebar-item.active {
+    @apply text-white bg-primary-600/20 border border-primary-500/30;
+    color: #60a5fa;
+  }
+
+  /* Stats card */
+  .stat-card {
+    @apply glass-card p-6 flex items-center gap-4;
+  }
+
+  /* Badge */
+  .badge {
+    @apply px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  /* Section heading */
+  .section-title {
+    @apply text-3xl md:text-4xl font-bold text-white mb-4;
+  }
+  .section-subtitle {
+    @apply text-gray-400 text-lg max-w-2xl mx-auto mb-12;
+  }
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+  }
+
+  .border-glow {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+  }
+
+  .hero-gradient {
+    background: radial-gradient(ellipse at center, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  }
+
+  .grid-bg {
+    background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+}
+
+/* ── Page Transitions ─────────────────────────────────────────────────────── */
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.4s ease-out;
+}
+
+/* ── Loader ──────────────────────────────────────────────────────────────── */
+.loader {
+  border: 3px solid rgba(59, 130, 246, 0.1);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Gradient animated background ─────────────────────────────────────────── */
+.animated-gradient {
+  background: linear-gradient(-45deg, #0f172a, #1e293b, #0c1528, #162033);
+  background-size: 400% 400%;
+  animation: gradient 15s ease infinite;
+}
