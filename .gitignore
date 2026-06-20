@@ -1,7 +1,14 @@
-# Backend
+# General
 node_modules/
 *.env
-database/*.db
+*.log
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Uploads
 uploads/sourcecode/*
 uploads/reports/*
 uploads/ppt/*
@@ -9,7 +16,6 @@ uploads/abstract/*
 uploads/viva/*
 uploads/images/*
 !uploads/.gitkeep
-*.log
 
 # Frontend
 frontend/node_modules/
